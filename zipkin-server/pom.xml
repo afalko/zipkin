@@ -283,6 +283,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
         <configuration>
+          <layout>ZIP</layout>
           <classifier>exec</classifier>
           <executable>true</executable>
           <excludeArtifactIds>logback-classic</excludeArtifactIds>

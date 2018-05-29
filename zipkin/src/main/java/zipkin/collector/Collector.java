@@ -83,13 +83,7 @@ public class Collector
       if (filters == null) {
         filters = Collections.emptyList();
       }
-      /*SpanFilter<Span> filter = null;
-      try {
-        filter = (SpanFilter<Span>)SpanFilter.class.cast(Class.forName("net.afalko.zipkin.filter.ExampleSpanFilter").newInstance());
-      } catch (IllegalAccessException | ClassNotFoundException | InstantiationException e) {
-        throw new RuntimeException("Class not found...", e);
-      }
-      filters.add(filter);*/
+
       logger.info("Total filters loaded: " + filters.size());
 
       this.filters = checkNotNull(filters, "filters");

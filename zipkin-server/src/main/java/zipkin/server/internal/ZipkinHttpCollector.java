@@ -23,6 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.zip.GZIPInputStream;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -61,10 +62,10 @@ class ZipkinHttpCollector implements HttpHandler, HandlerWrapper {
   private HttpHandler next;
 
   @Autowired ZipkinHttpCollector(StorageComponent storage, CollectorSampler sampler,
-    CollectorMetrics metrics, @Value("#{null}") List<SpanFilter> filters) {
+    CollectorMetrics metrics, Optional<List<SpanFilter>> filters) {
     this.metrics = metrics.forTransport("http");
-    this.collector = Collector.builder(getClass())
-      .storage(storage).sampler(sampler).metrics(this.metrics).filters(filters).build();
+    this.collector = Collector.builder(ZipkinHttpCollector.class)
+      .storage(storage).sampler(sampler).metrics(this.metrics).filters(filters.orElse(Collections.EMPTY_LIST)).build();
     this.JSON_V2 = new HttpCollector(new V2JsonSpanDecoder());
     this.PROTO3 = new HttpCollector(new V2Proto3SpanDecoder());
     this.JSON_V1 = new HttpCollector(JSON_DECODER);
