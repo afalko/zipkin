@@ -65,7 +65,7 @@ class ZipkinHttpCollector implements HttpHandler, HandlerWrapper {
     CollectorMetrics metrics, Optional<List<SpanFilter>> filters) {
     this.metrics = metrics.forTransport("http");
     this.collector = Collector.builder(ZipkinHttpCollector.class)
-      .storage(storage).sampler(sampler).metrics(this.metrics).filters(filters.orElse(Collections.EMPTY_LIST)).build();
+      .storage(storage).sampler(sampler).metrics(this.metrics).filters(filters.orElse(Collections.emptyList())).build();
     this.JSON_V2 = new HttpCollector(new V2JsonSpanDecoder());
     this.PROTO3 = new HttpCollector(new V2Proto3SpanDecoder());
     this.JSON_V1 = new HttpCollector(JSON_DECODER);
@@ -79,6 +79,8 @@ class ZipkinHttpCollector implements HttpHandler, HandlerWrapper {
   }
 
   @Override public void handleRequest(HttpServerExchange exchange) throws Exception {
+    // TODO: Http filters will be processed here
+
     boolean v2 = exchange.getRelativePath().equals("/api/v2/spans");
     boolean v1 = !v2 && exchange.getRelativePath().equals("/api/v1/spans");
     if (!v2 && !v1) {

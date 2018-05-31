@@ -15,6 +15,7 @@ package zipkin.internal;
 
 import java.util.List;
 import java.util.logging.Logger;
+
 import org.junit.Before;
 import org.junit.Test;
 import zipkin.Span;
@@ -32,6 +33,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static zipkin.TestObjects.LOTS_OF_SPANS;
+import static zipkin.TestObjects.V2SPAN;
+import static zipkin.TestObjects.getSpanEnrichmentFilters;
 import static zipkin.storage.Callback.NOOP;
 
 public class CollectorTest {
@@ -40,7 +43,7 @@ public class CollectorTest {
   Span span2 = ApplyTimestampAndDuration.apply(LOTS_OF_SPANS[1]);
 
   @Before public void setup() throws Exception {
-    collector = spy(new Collector<SpanDecoder, Span>(mock(Logger.class), null, null) {
+    collector = spy(new Collector<SpanDecoder, Span>(mock(Logger.class), null, getSpanEnrichmentFilters()) {
 
       @Override protected List<Span> decodeList(SpanDecoder decoder, byte[] serialized) {
         return decoder.readSpans(serialized);
@@ -170,4 +173,23 @@ public class CollectorTest {
 
     collector.accept(asList(span1), NOOP);
   }
+
+  @Test public void testV1EnrichmentFilters() {
+    List<Span> enrichedSpans = collector.filterSpans(asList(span1, span2), null);
+    assertThat(enrichedSpans.size()).isEqualTo(2);
+    Span enrichedSpan = enrichedSpans.get(0);
+    enrichedSpan.annotations.forEach(annotation -> {
+      if (annotation.value.equals("utestV1")) {
+        assertThat(annotation).hasToString("{\"timestamp\":0,\"value\":\"utestV1\"}");
+      }
+    });
+  }
+
+  @Test public void testV2EnrichmentFilters() {
+    List<zipkin2.Span> enrichedSpans = collector.filterSpans(asList(V2SPAN), null);
+    assertThat(enrichedSpans.size()).isEqualTo(1);
+    zipkin2.Span enrichedSpan = enrichedSpans.get(0);
+    assertThat(enrichedSpan.tags()).containsKeys("utest").containsValues("V2");
+  }
+
 }

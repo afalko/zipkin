@@ -18,6 +18,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
+
+import zipkin.Span;
 import zipkin.collector.CollectorMetrics;
 import zipkin.filter.SpanFilter;
 import zipkin.storage.Callback;
@@ -72,12 +74,16 @@ public abstract class Collector<D, S> {
    *
    * @param spans
    */
-  private List<S> filterSpans(List<S> spans, Callback<Void> callback) {
+  List<S> filterSpans(List<S> spans, Callback<Void> callback) {
     // These should never be processed in parallel.
     // If you need parallel processing put that into your specific filter implementation.
     List<S> processed = spans;
     for (SpanFilter filter : filters) {
-      processed = filter.process(processed, callback);
+      try {
+        processed = (List<S>)filter.processV1((List<Span>)processed, callback);
+      } catch (ClassCastException castException) {
+        processed = (List<S>)filter.processV2((List<zipkin2.Span>)processed, callback);
+      }
     }
     return processed;
   }

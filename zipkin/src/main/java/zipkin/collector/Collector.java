@@ -80,10 +80,6 @@ public class Collector
 
     /** @see {@link CollectorComponent.Builder#filters(List<SpanFilter>)} */
     public Builder filters(List<SpanFilter> filters) {
-      if (filters == null) {
-        filters = Collections.emptyList();
-      }
-
       logger.info("Total filters loaded: " + filters.size());
 
       this.filters = checkNotNull(filters, "filters");

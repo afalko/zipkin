@@ -107,6 +107,30 @@ $ ./mvnw -DskipTests --also-make -pl zipkin-server clean install
 $ java -jar ./zipkin-server/target/zipkin-server-*exec.jar
 ```
 
+## Zipkin Filters
+
+Zipkin supports a plugin model for filters. You can take filters off the shelf or create your own. There are two classes
+of filters: a) Span Filters - where you want to operate on individual spans. b) Http Filters - where you want to operate
+on headers. If you want to create your own, please follow the examples mentioned into the links below.
+
+### Zipkin Span Filters
+
+Here is an example enrichment filter that allows you to inject a tag to your spans from environment passed to Zipkin:
+[zipkin-generic-enrichment-filter](https://github.com/afalko/zipkin-generic-enrichment-filter)
+
+### Zipkin Http Filters
+
+TODO
+
+### Configuring Filters
+
+You are responsible for placing any filters onto Spring's loader.path and using `PropertiesLancher` to run Zipkin:
+```
+java -Dloader.path=/path/to/my/filters/ExampleSpanFilter-1.0.0.jar \
+  -cp zipkin-server-*exec.jar \
+  org.springframework.boot.loader.PropertiesLauncher
+```
+
 ## Artifacts
 ### Library Releases
 Releases are uploaded to [Bintray](https://bintray.com/openzipkin/maven/zipkin).

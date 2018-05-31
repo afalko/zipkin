@@ -15,11 +15,17 @@ package zipkin;
 
 import java.net.Inet6Address;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import zipkin.filter.SpanFilter;
 import zipkin.internal.ApplyTimestampAndDuration;
 import zipkin.internal.Dependencies;
+import zipkin.storage.Callback;
 
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
@@ -112,4 +118,43 @@ public final class TestObjects {
       throw new AssertionError(e);
     }
   }
+
+  /**
+   * These filters add things to spans
+   * @return
+   */
+  public static List<SpanFilter> getSpanEnrichmentFilters() {
+    SpanFilter spanUtestFilter = new SpanFilter() {
+      @Override
+      public List<Span> processV1(List<Span> spans, Callback<Void> callback) {
+        // For every span we add a new annotation
+        return spans.stream()
+          .map(s -> s.toBuilder().addAnnotation(Annotation.builder().timestamp(0L).value("utestV1").build()).build())
+          .collect(Collectors.toList());
+      }
+
+      @Override
+      public List<zipkin2.Span> processV2(List<zipkin2.Span> spans, Callback<Void> callback) {
+        // For v2, we add a tag
+        return spans.stream()
+          .map(s -> s.toBuilder().putTag("utest", "V2").build())
+          .collect(Collectors.toList());
+      }
+    };
+
+    return Collections.singletonList(spanUtestFilter);
+  }
+
+  public static final zipkin2.Span V2SPAN = zipkin2.Span.newBuilder()
+    .traceId("7180c278b62e8f6a216a2aea45d08fc9")
+    .parentId("6b221d5bc9e6496c")
+    .id("5b4185666d50f68b")
+    .name("get")
+    .kind(zipkin2.Span.Kind.CLIENT)
+    .timestamp((TODAY - 207) * 1000L)
+    .duration(207 * 1000L)
+    .addAnnotation((TODAY - 100) * 1000L, "foo")
+    .putTag("http.path", "/api")
+    .putTag("clnt/finagle.version", "6.45.0")
+    .build();
 }
