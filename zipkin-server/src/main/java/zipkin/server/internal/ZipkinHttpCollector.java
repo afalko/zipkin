@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.zip.GZIPInputStream;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import zipkin.SpanDecoder;

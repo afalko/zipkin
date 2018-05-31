@@ -283,6 +283,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
         <configuration>
+          <!-- This forces Spring Boot to use the PropertiesLauncher for startup, enabling loader.path -->
           <layout>ZIP</layout>
           <classifier>exec</classifier>
           <executable>true</executable>
