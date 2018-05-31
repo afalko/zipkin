@@ -19,6 +19,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
+import com.google.common.reflect.TypeToken;
 import zipkin.Span;
 import zipkin.collector.CollectorMetrics;
 import zipkin.filter.SpanFilter;
@@ -29,6 +30,7 @@ import static java.util.logging.Level.FINE;
 import static zipkin.internal.Util.checkNotNull;
 
 public abstract class Collector<D, S> {
+  private final TypeToken<S> spanType = new TypeToken<S>(getClass()){};
 
   protected final Logger logger;
   protected final CollectorMetrics metrics;
@@ -77,11 +79,12 @@ public abstract class Collector<D, S> {
   List<S> filterSpans(List<S> spans, Callback<Void> callback) {
     // These should never be processed in parallel.
     // If you need parallel processing put that into your specific filter implementation.
+    boolean isV1Span = spanType.getType().getTypeName().equals(Span.class.getTypeName());
     List<S> processed = spans;
     for (SpanFilter filter : filters) {
-      try {
+      if (isV1Span) {
         processed = (List<S>)filter.processV1((List<Span>)processed, callback);
-      } catch (ClassCastException castException) {
+      } else {
         processed = (List<S>)filter.processV2((List<zipkin2.Span>)processed, callback);
       }
     }

@@ -21,6 +21,8 @@ import org.junit.Test;
 import zipkin.Span;
 import zipkin.SpanDecoder;
 import zipkin.storage.Callback;
+import zipkin.storage.InMemorySpanStore;
+import zipkin.storage.StorageComponent;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -186,7 +188,9 @@ public class CollectorTest {
   }
 
   @Test public void testV2EnrichmentFilters() {
-    List<zipkin2.Span> enrichedSpans = collector.filterSpans(asList(V2SPAN), null);
+    V2Collector v2Collector = new V2Collector(mock(Logger.class), null, getSpanEnrichmentFilters(),
+      null, mock(zipkin2.storage.StorageComponent.class));
+    List<zipkin2.Span> enrichedSpans = v2Collector.filterSpans(asList(V2SPAN), null);
     assertThat(enrichedSpans.size()).isEqualTo(1);
     zipkin2.Span enrichedSpan = enrichedSpans.get(0);
     assertThat(enrichedSpan.tags()).containsKeys("utest").containsValues("V2");
