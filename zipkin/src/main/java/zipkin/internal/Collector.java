@@ -79,7 +79,7 @@ public abstract class Collector<D, S> {
   List<S> filterSpans(List<S> spans, Callback<Void> callback) {
     // These should never be processed in parallel.
     // If you need parallel processing put that into your specific filter implementation.
-    boolean isV1Span = spanType.getType().getTypeName().equals(Span.class.getTypeName());
+    boolean isV1Span = spanType.getType().equals(Span.class);
     List<S> processed = spans;
     for (SpanFilter filter : filters) {
       if (isV1Span) {
