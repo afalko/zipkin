@@ -20,7 +20,7 @@
   <parent>
     <groupId>io.zipkin.java</groupId>
     <artifactId>zipkin-autoconfigure</artifactId>
-    <version>2.8.5-SNAPSHOT</version>
+    <version>2.9.3-SNAPSHOT</version>
   </parent>
 
   <artifactId>zipkin-autoconfigure-collector-scribe</artifactId>
@@ -32,7 +32,7 @@
 
   <dependencies>
     <dependency>
-      <groupId>${project.groupId}</groupId>
+      <groupId>io.zipkin.zipkin2</groupId>
       <artifactId>zipkin-collector-scribe</artifactId>
       <exclusions>
         <!-- com.facebook.swift:swift-service brings an old version which
@@ -59,7 +59,9 @@
           <classifier>module</classifier>
           <!-- exclude dependencies already packaged in zipkin-server -->
           <!-- https://github.com/spring-projects/spring-boot/issues/3426 transitive exclude doesn't work -->
-          <excludeGroupIds>org.springframework.boot,org.springframework,org.slf4j,commons-logging,com.google.code.gson,com.google.guava</excludeGroupIds>
+          <excludeGroupIds>
+            org.springframework.boot,org.springframework,org.slf4j,commons-logging,com.google.code.gson,com.google.guava
+          </excludeGroupIds>
           <!-- excludes direct dependency instead of the group id, as otherwise we'd exclude ourselves -->
           <excludeArtifactIds>zipkin</excludeArtifactIds>
         </configuration>

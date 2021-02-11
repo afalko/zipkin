@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -19,24 +19,27 @@ import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
+import static com.google.gson.stream.JsonToken.BOOLEAN;
+import static com.google.gson.stream.JsonToken.NULL;
+import static com.google.gson.stream.JsonToken.STRING;
 import static java.lang.String.format;
+import static zipkin2.internal.JsonEscaper.jsonEscape;
+import static zipkin2.internal.JsonEscaper.jsonEscapedSizeInBytes;
 
 /**
- * This explicitly constructs instances of model classes via manual parsing for a number of
- * reasons.
+ * This explicitly constructs instances of model classes via manual parsing for a number of reasons.
  *
  * <ul>
- *   <li>Eliminates the need to keep separate model classes for proto3 vs json</li>
- *   <li>Avoids magic field initialization which, can miss constructor guards</li>
- *   <li>Allows us to safely re-use the json form in toString methods</li>
- *   <li>Encourages logic to be based on the json shape of objects</li>
- *   <li>Ensures the order and naming of the fields in json is stable</li>
+ *   <li>Eliminates the need to keep separate model classes for proto3 vs json
+ *   <li>Avoids magic field initialization which, can miss constructor guards
+ *   <li>Allows us to safely re-use the json form in toString methods
+ *   <li>Encourages logic to be based on the json shape of objects
+ *   <li>Ensures the order and naming of the fields in json is stable
  * </ul>
  *
- * <p> There is the up-front cost of creating this, and maintenance of this to consider. However,
+ * <p>There is the up-front cost of creating this, and maintenance of this to consider. However,
  * this should be easy to justify as these objects don't change much at all.
  */
 public final class JsonCodec {
@@ -45,8 +48,9 @@ public final class JsonCodec {
     final com.google.gson.stream.JsonReader delegate;
 
     JsonReader(byte[] bytes) {
-      delegate = new com.google.gson.stream.JsonReader(
-        new InputStreamReader(new ByteArrayInputStream(bytes), UTF_8));
+      delegate =
+          new com.google.gson.stream.JsonReader(
+              new InputStreamReader(new ByteArrayInputStream(bytes), UTF_8));
     }
 
     public void beginArray() throws IOException {
@@ -97,11 +101,20 @@ public final class JsonCodec {
       return delegate.nextInt();
     }
 
-    public boolean peekNull() throws IOException {
-      return delegate.peek() == com.google.gson.stream.JsonToken.NULL;
+    public boolean peekString() throws IOException {
+      return delegate.peek() == STRING;
     }
 
-    @Override public String toString() {
+    public boolean peekBoolean() throws IOException {
+      return delegate.peek() == BOOLEAN;
+    }
+
+    public boolean peekNull() throws IOException {
+      return delegate.peek() == NULL;
+    }
+
+    @Override
+    public String toString() {
       return delegate.toString();
     }
   }
@@ -128,8 +141,8 @@ public final class JsonCodec {
     return out.get(0);
   }
 
-  public static <T> boolean readList(JsonReaderAdapter<T> adapter, byte[] bytes,
-    Collection<T> out) {
+  public static <T> boolean readList(
+      JsonReaderAdapter<T> adapter, byte[] bytes, Collection<T> out) {
     if (bytes.length == 0) return false;
     JsonReader reader = new JsonReader(bytes);
     try {
@@ -141,12 +154,6 @@ public final class JsonCodec {
     } catch (Exception e) {
       throw exceptionReading("List<" + adapter + ">", e);
     }
-  }
-
-  public static <T> List<T> readList(JsonReaderAdapter<T> adapter, byte[] bytes) {
-    List<T> out = new ArrayList<>();
-    if (!readList(adapter, bytes, out)) return Collections.emptyList();
-    return out;
   }
 
   static <T> int sizeInBytes(Buffer.Writer<T> writer, List<T> value) {
@@ -185,10 +192,14 @@ public final class JsonCodec {
       String written = new String(bytesWritten, UTF_8);
       // Don't use value directly in the message, as its toString might be implemented using this
       // method. If that's the case, we'd stack overflow. Instead, emit what we've written so far.
-      String message = format(
-        "Bug found using %s to write %s as json. Wrote %s/%s bytes: %s",
-        writer.getClass().getSimpleName(), value.getClass().getSimpleName(), lengthWritten,
-        bytes.length, written);
+      String message =
+          format(
+              "Bug found using %s to write %s as json. Wrote %s/%s bytes: %s",
+              writer.getClass().getSimpleName(),
+              value.getClass().getSimpleName(),
+              lengthWritten,
+              bytes.length,
+              written);
       throw Platform.get().assertionError(message, e);
     }
     return b.toByteArray();
@@ -228,4 +239,26 @@ public final class JsonCodec {
     String message = format("%s reading %s from json", cause, type);
     throw new IllegalArgumentException(message, e);
   }
+
+  public static byte[] writeStrings(List<String> strings) {
+    return writeList(STRING_WRITER, strings);
+  }
+
+  static final Buffer.Writer<String> STRING_WRITER =
+      new Buffer.Writer<String>() {
+        @Override
+        public int sizeInBytes(String value) {
+          return jsonEscapedSizeInBytes(value) + 2; // For quotes
+        }
+
+        @Override
+        public void write(String value, Buffer buffer) {
+          buffer.writeByte('"').writeUtf8(jsonEscape(value)).writeByte('"');
+        }
+
+        @Override
+        public String toString() {
+          return "String";
+        }
+      };
 }

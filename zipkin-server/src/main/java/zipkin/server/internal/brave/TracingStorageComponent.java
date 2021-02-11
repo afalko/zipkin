@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -13,42 +13,77 @@
  */
 package zipkin.server.internal.brave;
 
+import brave.Tracer;
 import brave.Tracing;
 import java.io.IOException;
-import zipkin.storage.AsyncSpanConsumer;
-import zipkin.storage.AsyncSpanStore;
-import zipkin.storage.SpanStore;
-import zipkin.storage.StorageComponent;
+import java.util.List;
+import zipkin2.Call;
+import zipkin2.DependencyLink;
+import zipkin2.Span;
+import zipkin2.storage.QueryRequest;
+import zipkin2.storage.SpanConsumer;
+import zipkin2.storage.SpanStore;
+import zipkin2.storage.StorageComponent;
 
 // public for use in ZipkinServerConfiguration
-// not making spans for async storage to avoid complexity around V2StorageComponent
-public final class TracingStorageComponent implements StorageComponent {
-  private final Tracing tracing;
-  private final StorageComponent delegate;
+public final class TracingStorageComponent extends StorageComponent {
+  final Tracing tracing;
+  final StorageComponent delegate;
 
   public TracingStorageComponent(Tracing tracing, StorageComponent delegate) {
     this.tracing = tracing;
     this.delegate = delegate;
   }
 
-  @Override public SpanStore spanStore() {
-    return new TracingSpanStore(tracing, delegate);
-  }
-
-  @Override public AsyncSpanStore asyncSpanStore() {
-    return delegate.asyncSpanStore();
+  @Override
+  public SpanStore spanStore() {
+    return new TracingSpanStore(tracing, delegate.spanStore());
   }
 
   @Override
-  public AsyncSpanConsumer asyncSpanConsumer() {
-    return delegate.asyncSpanConsumer();
+  public SpanConsumer spanConsumer() {
+    // prevents accidental write amplification
+    return delegate.spanConsumer();
   }
 
-  @Override public CheckResult check() {
-    return delegate.check();
-  }
-
-  @Override public void close() throws IOException {
+  @Override
+  public void close() throws IOException {
     delegate.close();
+  }
+
+  static final class TracingSpanStore implements SpanStore {
+    private final Tracer tracer;
+    private final SpanStore delegate;
+
+    TracingSpanStore(Tracing tracing, SpanStore delegate) {
+      this.tracer = tracing.tracer();
+      this.delegate = delegate;
+    }
+
+    @Override
+    public Call<List<List<Span>>> getTraces(QueryRequest request) {
+      return new TracedCall<>(tracer, delegate.getTraces(request), "get-traces");
+    }
+
+    @Override
+    public Call<List<Span>> getTrace(String traceId) {
+      return new TracedCall<>(tracer, delegate.getTrace(traceId), "get-trace");
+    }
+
+    @Override
+    public Call<List<String>> getServiceNames() {
+      return new TracedCall<>(tracer, delegate.getServiceNames(), "get-service-names");
+    }
+
+    @Override
+    public Call<List<String>> getSpanNames(String serviceName) {
+      return new TracedCall<>(tracer, delegate.getSpanNames(serviceName), "get-span-names");
+    }
+
+    @Override
+    public Call<List<DependencyLink>> getDependencies(long endTs, long lookback) {
+      return new TracedCall<>(
+          tracer, delegate.getDependencies(endTs, lookback), "get-dependencies");
+    }
   }
 }

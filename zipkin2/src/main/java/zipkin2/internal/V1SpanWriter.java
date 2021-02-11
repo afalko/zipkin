@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -13,34 +13,26 @@
  */
 package zipkin2.internal;
 
-import java.nio.charset.Charset;
-import java.util.Iterator;
-import java.util.Map;
-import zipkin2.Annotation;
 import zipkin2.Endpoint;
-import zipkin2.Span;
+import zipkin2.v1.V1Annotation;
+import zipkin2.v1.V1BinaryAnnotation;
+import zipkin2.v1.V1Span;
 
 import static zipkin2.internal.Buffer.asciiSizeInBytes;
 import static zipkin2.internal.JsonEscaper.jsonEscape;
 import static zipkin2.internal.JsonEscaper.jsonEscapedSizeInBytes;
+import static zipkin2.internal.V2SpanWriter.endpointSizeInBytes;
+import static zipkin2.internal.V2SpanWriter.writeAnnotation;
 
-//@Immutable
-public final class V1SpanWriter implements Buffer.Writer<Span> {
-  @Override public int sizeInBytes(Span value) {
-    Parsed parsed = parse(value);
+/** This type is only used to backport the v1 read api as it returns v1 json. */
+// @Immutable
+public final class V1SpanWriter implements Buffer.Writer<V1Span> {
 
-    Integer endpointSize;
-    if (value.localEndpoint() != null) {
-      endpointSize = V2SpanWriter.endpointSizeInBytes(value.localEndpoint());
-      if (value.localServiceName() == null) {
-        endpointSize += 17; // "serviceName":"",
-      }
-    } else {
-      endpointSize = null;
-    }
-    int sizeInBytes = 13; // {"traceId":""
-    sizeInBytes += value.traceId().length();
-    if (value.parentId() != null) {
+  @Override
+  public int sizeInBytes(V1Span value) {
+    int sizeInBytes = 29; // {"traceId":"xxxxxxxxxxxxxxxx"
+    if (value.traceIdHigh() != 0L) sizeInBytes += 16;
+    if (value.parentId() != 0L) {
       sizeInBytes += 30; // ,"parentId":"0123456789abcdef"
     }
     sizeInBytes += 24; // ,"id":"0123456789abcdef"
@@ -48,127 +40,132 @@ public final class V1SpanWriter implements Buffer.Writer<Span> {
     if (value.name() != null) {
       sizeInBytes += jsonEscapedSizeInBytes(value.name());
     }
-    if (Boolean.TRUE.equals(value.shared()) && "sr".equals(parsed.begin)) {
-      // don't report server-side timestamp on shared or incomplete spans
-    } else {
-      if (value.timestampAsLong() != 0L) {
-        sizeInBytes += 13; // ,"timestamp":
-        sizeInBytes += asciiSizeInBytes(value.timestampAsLong());
-      }
-      if (value.durationAsLong() != 0L) {
-        sizeInBytes += 12; // ,"duration":
-        sizeInBytes += asciiSizeInBytes(value.durationAsLong());
-      }
+    if (value.timestamp() != 0L) {
+      sizeInBytes += 13; // ,"timestamp":
+      sizeInBytes += asciiSizeInBytes(value.timestamp());
+    }
+    if (value.duration() != 0L) {
+      sizeInBytes += 12; // ,"duration":
+      sizeInBytes += asciiSizeInBytes(value.duration());
     }
 
     int annotationCount = value.annotations().size();
-
-    if (parsed.startTs != 0L && parsed.begin != null) {
-      annotationCount++;
-      sizeInBytes += coreAnnotationSizeInBytes(parsed.startTs, endpointSize);
-    }
-
-    if (parsed.endTs != 0L && parsed.end != null) {
-      annotationCount++;
-      sizeInBytes += coreAnnotationSizeInBytes(parsed.endTs, endpointSize);
-    }
-
+    Endpoint lastEndpoint = null;
+    int lastEndpointSize = 0;
     if (annotationCount > 0) {
       sizeInBytes += 17; // ,"annotations":[]
       if (annotationCount > 1) sizeInBytes += annotationCount - 1; // comma to join elements
-      for (int i = 0, length = value.annotations().size(); i < length; i++) {
-        sizeInBytes += V2SpanWriter.annotationSizeInBytes(value.annotations().get(i), endpointSize);
+      for (int i = 0; i < annotationCount; i++) {
+        V1Annotation a = value.annotations().get(i);
+        Endpoint endpoint = a.endpoint();
+        int endpointSize;
+        if (endpoint == null) {
+          endpointSize = 0;
+        } else if (endpoint.equals(lastEndpoint)) {
+          endpointSize = lastEndpointSize;
+        } else {
+          lastEndpoint = endpoint;
+          endpointSize = lastEndpointSize = endpointSizeInBytes(endpoint, true);
+        }
+        sizeInBytes += V2SpanWriter.annotationSizeInBytes(a.timestamp(), a.value(), endpointSize);
       }
     }
 
-    int binaryAnnotationCount = value.tags().size();
-
-    if (parsed.remoteEndpointType != null && value.remoteEndpoint() != null) {
-      binaryAnnotationCount++;
-      sizeInBytes += 37; // {"key":"NN","value":true,"endpoint":}
-      sizeInBytes += V2SpanWriter.endpointSizeInBytes(value.remoteEndpoint());
-      if (value.remoteServiceName() == null) {
-        sizeInBytes += 17; // "serviceName":"",
-      }
-    }
-
+    int binaryAnnotationCount = value.binaryAnnotations().size();
     if (binaryAnnotationCount > 0) {
       sizeInBytes += 23; // ,"binaryAnnotations":[]
-      if (binaryAnnotationCount > 1) {
-        sizeInBytes += binaryAnnotationCount - 1; // comma to join elements
-      }
-      for (Map.Entry<String, String> tag : value.tags().entrySet()) {
-        sizeInBytes += binaryAnnotationSizeInBytes(tag.getKey(), tag.getValue(), endpointSize);
+      if (binaryAnnotationCount > 1) sizeInBytes += binaryAnnotationCount - 1; // commas
+      for (int i = 0; i < binaryAnnotationCount; ) {
+        V1BinaryAnnotation a = value.binaryAnnotations().get(i++);
+        Endpoint endpoint = a.endpoint();
+        int endpointSize;
+        if (endpoint == null) {
+          endpointSize = 0;
+        } else if (endpoint.equals(lastEndpoint)) {
+          endpointSize = lastEndpointSize;
+        } else {
+          lastEndpoint = endpoint;
+          endpointSize = lastEndpointSize = endpointSizeInBytes(endpoint, true);
+        }
+        if (a.stringValue() != null) {
+          sizeInBytes += binaryAnnotationSizeInBytes(a.key(), a.stringValue(), endpointSize);
+        } else {
+          sizeInBytes += 37; // {"key":"NN","value":true,"endpoint":}
+          sizeInBytes += endpointSize;
+        }
       }
     }
-    if (Boolean.TRUE.equals(value.debug())) {
-      sizeInBytes += 13; // ,"debug":true
-    }
+
+    if (Boolean.TRUE.equals(value.debug())) sizeInBytes += 13; // ,"debug":true
     return ++sizeInBytes; // }
   }
 
-  @Override public void write(Span value, Buffer b) {
-    Parsed parsed = parse(value);
-    byte[] endpointBytes = legacyEndpointBytes(value.localEndpoint());
-    b.writeAscii("{\"traceId\":\"").writeAscii(value.traceId()).writeByte('"');
-    if (value.parentId() != null) {
-      b.writeAscii(",\"parentId\":\"").writeAscii(value.parentId()).writeByte('"');
+  @Override
+  public void write(V1Span value, Buffer b) {
+    b.writeAscii("{\"traceId\":\"");
+    if (value.traceIdHigh() != 0L) b.writeLongHex(value.traceIdHigh());
+    b.writeLongHex(value.traceId()).writeByte('"');
+    if (value.parentId() != 0L) {
+      b.writeAscii(",\"parentId\":\"").writeLongHex(value.parentId()).writeByte('"');
     }
-    b.writeAscii(",\"id\":\"").writeAscii(value.id()).writeByte('"');
+    b.writeAscii(",\"id\":\"").writeLongHex(value.id()).writeByte('"');
     b.writeAscii(",\"name\":\"");
     if (value.name() != null) b.writeUtf8(jsonEscape(value.name()));
     b.writeByte('"');
 
-    if (Boolean.TRUE.equals(value.shared()) && "sr".equals(parsed.begin)) {
-      // don't report server-side timestamp on shared or incomplete spans
-    } else {
-      if (value.timestampAsLong() != 0L) {
-        b.writeAscii(",\"timestamp\":").writeAscii(value.timestampAsLong());
-      }
-      if (value.durationAsLong() != 0L) {
-        b.writeAscii(",\"duration\":").writeAscii(value.durationAsLong());
-      }
+    if (value.timestamp() != 0L) {
+      b.writeAscii(",\"timestamp\":").writeAscii(value.timestamp());
+    }
+    if (value.duration() != 0L) {
+      b.writeAscii(",\"duration\":").writeAscii(value.duration());
     }
 
     int annotationCount = value.annotations().size();
-    boolean beginAnnotation = parsed.startTs != 0L && parsed.begin != null;
-    boolean endAnnotation = parsed.endTs != 0L && parsed.end != null;
-    if (annotationCount > 0 || beginAnnotation || endAnnotation) {
-      int length = value.annotations().size();
+    Endpoint lastEndpoint = null;
+    byte[] lastEndpointBytes = null;
+    if (annotationCount > 0) {
       b.writeAscii(",\"annotations\":[");
-      if (beginAnnotation) {
-        V2SpanWriter.writeAnnotation(Annotation.create(parsed.startTs, parsed.begin), endpointBytes,
-          b);
-        if (length > 0) b.writeByte(',');
-      }
-      for (int i = 0; i < length; ) {
-        V2SpanWriter.writeAnnotation(value.annotations().get(i++), endpointBytes, b);
-        if (i < length) b.writeByte(',');
-      }
-      if (endAnnotation) {
-        b.writeByte(',');
-        V2SpanWriter.writeAnnotation(Annotation.create(parsed.endTs, parsed.end), endpointBytes, b);
+      for (int i = 0; i < annotationCount; ) {
+        V1Annotation a = value.annotations().get(i++);
+        Endpoint endpoint = a.endpoint();
+        byte[] endpointBytes;
+        if (endpoint == null) {
+          endpointBytes = null;
+        } else if (endpoint.equals(lastEndpoint)) {
+          endpointBytes = lastEndpointBytes;
+        } else {
+          lastEndpoint = endpoint;
+          endpointBytes = lastEndpointBytes = legacyEndpointBytes(endpoint);
+        }
+        writeAnnotation(a.timestamp(), a.value(), endpointBytes, b);
+        if (i < annotationCount) b.writeByte(',');
       }
       b.writeByte(']');
     }
-    int binaryAnnotationCount = value.tags().size();
-
-    boolean hasRemoteEndpoint = parsed.remoteEndpointType != null && value.remoteEndpoint() != null;
-    if (hasRemoteEndpoint) binaryAnnotationCount++;
+    int binaryAnnotationCount = value.binaryAnnotations().size();
     if (binaryAnnotationCount > 0) {
       b.writeAscii(",\"binaryAnnotations\":[");
-      Iterator<Map.Entry<String, String>> i = value.tags().entrySet().iterator();
-      while (i.hasNext()) {
-        Map.Entry<String, String> entry = i.next();
-        writeBinaryAnnotation(entry.getKey(), entry.getValue(), endpointBytes, b);
-        if (i.hasNext()) b.writeByte(',');
-      }
-      if (hasRemoteEndpoint) {
-        if (!value.tags().isEmpty()) b.writeByte(',');
-        b.writeAscii("{\"key\":\"").writeAscii(parsed.remoteEndpointType);
-        b.writeAscii("\",\"value\":true,\"endpoint\":");
-        b.write(legacyEndpointBytes(value.remoteEndpoint()));
-        b.writeByte('}');
+      for (int i = 0; i < binaryAnnotationCount; ) {
+        V1BinaryAnnotation a = value.binaryAnnotations().get(i++);
+        Endpoint endpoint = a.endpoint();
+        byte[] endpointBytes;
+        if (endpoint == null) {
+          endpointBytes = null;
+        } else if (endpoint.equals(lastEndpoint)) {
+          endpointBytes = lastEndpointBytes;
+        } else {
+          lastEndpoint = endpoint;
+          endpointBytes = lastEndpointBytes = legacyEndpointBytes(endpoint);
+        }
+        if (a.stringValue() != null) {
+          writeBinaryAnnotation(a.key(), a.stringValue(), endpointBytes, b);
+        } else {
+          b.writeAscii("{\"key\":\"").writeAscii(a.key());
+          b.writeAscii("\",\"value\":true,\"endpoint\":");
+          b.write(endpointBytes);
+          b.writeByte('}');
+        }
+        if (i < binaryAnnotationCount) b.writeByte(',');
       }
       b.writeByte(']');
     }
@@ -178,30 +175,23 @@ public final class V1SpanWriter implements Buffer.Writer<Span> {
     b.writeByte('}');
   }
 
-  @Override public String toString() {
+  @Override
+  public String toString() {
     return "Span";
   }
 
-  static final byte[] EMPTY_SERVICE = "{\"serviceName\":\"\"".getBytes(Charset.forName("UTF-8"));
-
   static byte[] legacyEndpointBytes(@Nullable Endpoint localEndpoint) {
     if (localEndpoint == null) return null;
-    Buffer buffer = new Buffer(V2SpanWriter.endpointSizeInBytes(localEndpoint));
-    V2SpanWriter.writeEndpoint(localEndpoint, buffer);
-    byte[] endpointBytes = buffer.toByteArray();
-    if (localEndpoint.serviceName() != null) return endpointBytes;
-    byte[] newSpanBytes = new byte[EMPTY_SERVICE.length + endpointBytes.length];
-    System.arraycopy(EMPTY_SERVICE, 0, newSpanBytes, 0, EMPTY_SERVICE.length);
-    newSpanBytes[EMPTY_SERVICE.length] = ',';
-    System.arraycopy(endpointBytes, 1, newSpanBytes, 18, endpointBytes.length - 1);
-    return newSpanBytes;
+    Buffer buffer = new Buffer(endpointSizeInBytes(localEndpoint, true));
+    V2SpanWriter.writeEndpoint(localEndpoint, buffer, true);
+    return buffer.toByteArray();
   }
 
-  static int binaryAnnotationSizeInBytes(String key, String value, @Nullable Integer endpointSize) {
+  static int binaryAnnotationSizeInBytes(String key, String value, int endpointSize) {
     int sizeInBytes = 21; // {"key":"","value":""}
     sizeInBytes += jsonEscapedSizeInBytes(key);
     sizeInBytes += jsonEscapedSizeInBytes(value);
-    if (endpointSize != null) {
+    if (endpointSize != 0) {
       sizeInBytes += 12; // ,"endpoint":
       sizeInBytes += endpointSize;
     }
@@ -213,60 +203,5 @@ public final class V1SpanWriter implements Buffer.Writer<Span> {
     b.writeAscii("\",\"value\":\"").writeUtf8(jsonEscape(value)).writeByte('"');
     if (endpoint != null) b.writeAscii(",\"endpoint\":").write(endpoint);
     b.writeAscii("}");
-  }
-
-  static class Parsed {
-    long startTs, endTs;
-    String begin = null, end = null;
-    String remoteEndpointType = null;
-  }
-
-  static Parsed parse(Span in) {
-    Parsed parsed = new Parsed();
-    parsed.startTs = in.timestampAsLong();
-    parsed.endTs = parsed.startTs != 0L && in.durationAsLong() != 0L
-      ? parsed.startTs + in.durationAsLong() : 0L;
-
-    if (in.kind() != null) {
-      switch (in.kind()) {
-        case CLIENT:
-          parsed.remoteEndpointType = "sa";
-          parsed.begin = "cs";
-          parsed.end = "cr";
-          break;
-        case SERVER:
-          parsed.remoteEndpointType = "ca";
-          parsed.begin = "sr";
-          parsed.end = "ss";
-          break;
-        case PRODUCER:
-          parsed.remoteEndpointType = "ma";
-          parsed.begin = "ms";
-          parsed.end = "ws";
-          break;
-        case CONSUMER:
-          parsed.remoteEndpointType = "ma";
-          if (parsed.endTs != 0L) {
-            parsed.begin = "wr";
-            parsed.end = "mr";
-          } else {
-            parsed.begin = "mr";
-          }
-          break;
-        default:
-          throw new AssertionError("update kind mapping");
-      }
-    }
-    return parsed;
-  }
-
-  static int coreAnnotationSizeInBytes(long timestamp, @Nullable Integer endpointSizeInBytes) {
-    int sizeInBytes = 27; // {"timestamp":,"value":"??"}
-    sizeInBytes += asciiSizeInBytes(timestamp);
-    if (endpointSizeInBytes != null) {
-      sizeInBytes += 12; // ,"endpoint":
-      sizeInBytes += endpointSizeInBytes;
-    }
-    return sizeInBytes;
   }
 }

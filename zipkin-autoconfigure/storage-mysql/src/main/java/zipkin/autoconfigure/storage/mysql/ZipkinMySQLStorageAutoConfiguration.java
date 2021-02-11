@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -25,8 +25,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import zipkin.storage.StorageComponent;
-import zipkin.storage.mysql.MySQLStorage;
+import zipkin2.storage.StorageComponent;
+import zipkin2.storage.mysql.v1.MySQLStorage;
 
 @Configuration
 @EnableConfigurationProperties(ZipkinMySQLStorageProperties.class)
@@ -40,23 +40,31 @@ class ZipkinMySQLStorageAutoConfiguration {
   @Qualifier("tracingExecuteListenerProvider")
   ExecuteListenerProvider listener;
 
-  @Bean @ConditionalOnMissingBean(Executor.class) Executor executor() {
+  @Bean
+  @ConditionalOnMissingBean(Executor.class)
+  Executor executor() {
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
     executor.setThreadNamePrefix("ZipkinMySQLStorage-");
     executor.initialize();
     return executor;
   }
 
-  @Bean @ConditionalOnMissingBean(DataSource.class) DataSource mysqlDataSource() {
+  @Bean
+  @ConditionalOnMissingBean(DataSource.class)
+  DataSource mysqlDataSource() {
     return mysql.toDataSource();
   }
 
-  @Bean StorageComponent storage(Executor executor, DataSource dataSource,
+  @Bean
+  StorageComponent storage(
+      Executor executor,
+      DataSource dataSource,
       @Value("${zipkin.storage.strict-trace-id:true}") boolean strictTraceId) {
-    return MySQLStorage.builder()
+    return MySQLStorage.newBuilder()
         .strictTraceId(strictTraceId)
         .executor(executor)
         .datasource(dataSource)
-        .listenerProvider(listener).build();
+        .listenerProvider(listener)
+        .build();
   }
 }

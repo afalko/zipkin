@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -16,7 +16,7 @@ package zipkin.autoconfigure.storage.cassandra;
 import java.io.Serializable;
 import java.util.concurrent.TimeUnit;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import zipkin.storage.cassandra.CassandraStorage;
+import zipkin2.storage.cassandra.v1.CassandraStorage;
 
 @ConfigurationProperties("zipkin.storage.cassandra")
 class ZipkinCassandraStorageProperties implements Serializable { // for Spark jobs
@@ -103,33 +103,25 @@ class ZipkinCassandraStorageProperties implements Serializable { // for Spark jo
     this.password = "".equals(password) ? null : password;
   }
 
-  /**
-   * @deprecated See {@link CassandraStorage.Builder#spanTtl(int)}
-   */
+  /** @deprecated See {@link CassandraStorage.Builder#spanTtl(int)} */
   @Deprecated
   public int getSpanTtl() {
     return spanTtl;
   }
 
-  /**
-   * @deprecated See {@link CassandraStorage.Builder#spanTtl(int)}
-   */
+  /** @deprecated See {@link CassandraStorage.Builder#spanTtl(int)} */
   @Deprecated
   public void setSpanTtl(int spanTtl) {
     this.spanTtl = spanTtl;
   }
 
-  /**
-   * @deprecated See {@link CassandraStorage.Builder#indexTtl(int)}
-   */
+  /** @deprecated See {@link CassandraStorage.Builder#indexTtl(int)} */
   @Deprecated
   public int getIndexTtl() {
     return indexTtl;
   }
 
-  /**
-   * @deprecated See {@link CassandraStorage.Builder#indexTtl(int)}
-   */
+  /** @deprecated See {@link CassandraStorage.Builder#indexTtl(int)} */
   @Deprecated
   public void setIndexTtl(int indexTtl) {
     this.indexTtl = indexTtl;
@@ -160,7 +152,7 @@ class ZipkinCassandraStorageProperties implements Serializable { // for Spark jo
   }
 
   public CassandraStorage.Builder toBuilder() {
-    return CassandraStorage.builder()
+    return CassandraStorage.newBuilder()
         .keyspace(keyspace)
         .contactPoints(contactPoints)
         .localDc(localDc)

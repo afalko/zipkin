@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -30,6 +30,31 @@ public enum Encoding {
       for (int i = 0, length = values.size(); i < length; ) {
         sizeInBytes += values.get(i++).length;
         if (i < length) sizeInBytes++;
+      }
+      return sizeInBytes;
+    }
+  },
+  /**
+   * The first format of Zipkin was TBinaryProtocol, big-endian thrift. It is no longer used, but
+   * defined here to allow collectors to support reading old data.
+   *
+   * <p>The message's binary data includes a list header followed by N spans serialized in
+   * TBinaryProtocol
+   *
+   * @deprecated this format is deprecated in favor of json or proto3
+   */
+  @Deprecated
+  THRIFT {
+    /** Encoding overhead is thrift type plus 32-bit length prefix */
+    @Override public int listSizeInBytes(int encodedSizeInBytes) {
+      return 5 + encodedSizeInBytes;
+    }
+
+    /** Encoding overhead is thrift type plus 32-bit length prefix */
+    @Override public int listSizeInBytes(List<byte[]> values) {
+      int sizeInBytes = 5;
+      for (int i = 0, length = values.size(); i < length; i++) {
+        sizeInBytes += values.get(i).length;
       }
       return sizeInBytes;
     }

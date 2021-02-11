@@ -131,12 +131,10 @@ Defaults to true
 * `COLLECTOR_SAMPLE_RATE`: Percentage of traces to retain, defaults to always sample (1.0).
 
 ### Cassandra Storage
-Zipkin's [Cassandra v3 storage component](../zipkin-storage/zipkin2_cassandra)
-supports version 3.9+ and applies when `STORAGE_TYPE` is set to `cassandra2`:
-Zipkin's [Cassandra legacy storage component](../zipkin-storage/cassandra)
-supports version 2.2+ and applies when `STORAGE_TYPE` is set to `cassandra`:
+Zipkin's [Cassandra storage component](../zipkin-storage/cassandra)
+supports version 3.11+ and applies when `STORAGE_TYPE` is set to `cassandra3`:
 
-    * `CASSANDRA_KEYSPACE`: The keyspace to use. Defaults to "zipkin2" when storage type is "cassandra3" or "zipkin" if legacy.
+    * `CASSANDRA_KEYSPACE`: The keyspace to use. Defaults to "zipkin2"
     * `CASSANDRA_CONTACT_POINTS`: Comma separated list of host addresses part of Cassandra cluster. You can also specify a custom port with 'host:port'. Defaults to localhost on port 9042.
     * `CASSANDRA_LOCAL_DC`: Name of the datacenter that will be considered "local" for latency load balancing. When unset, load-balancing is round-robin.
     * `CASSANDRA_ENSURE_SCHEMA`: Ensuring cassandra has the latest schema. If enabled tries to execute scripts in the classpath prefixed with `cassandra-schema-cql3`. Defaults to true
@@ -156,46 +154,20 @@ Example usage with logging:
 $ STORAGE_TYPE=cassandra3 java -jar zipkin.jar --logging.level.zipkin=trace --logging.level.zipkin2=trace --logging.level.com.datastax.driver.core=debug
 ```
 
-### MySQL Storage
-The following apply when `STORAGE_TYPE` is set to `mysql`:
-
-    * `MYSQL_DB`: The database to use. Defaults to "zipkin".
-    * `MYSQL_USER` and `MYSQL_PASS`: MySQL authentication, which defaults to empty string.
-    * `MYSQL_HOST`: Defaults to localhost
-    * `MYSQL_TCP_PORT`: Defaults to 3306
-    * `MYSQL_MAX_CONNECTIONS`: Maximum concurrent connections, defaults to 10
-    * `MYSQL_USE_SSL`: Requires `javax.net.ssl.trustStore` and `javax.net.ssl.trustStorePassword`, defaults to false.
-
-Example usage:
-
-```bash
-$ STORAGE_TYPE=mysql MYSQL_USER=root java -jar zipkin.jar
-```
-
 ### Elasticsearch Storage
-Zipkin's [Elasticsearch Http storage component](../zipkin-storage/elasticsearch-http)
-supports versions 2.x and 5.x and applies when `STORAGE_TYPE` is set to `elasticsearch`
+Zipkin's [Elasticsearch storage component](../zipkin-storage/elasticsearch)
+supports versions 2-6.x and applies when `STORAGE_TYPE` is set to `elasticsearch`
 
 The following apply when `STORAGE_TYPE` is set to `elasticsearch`:
 
     * `ES_HOSTS`: A comma separated list of elasticsearch base urls to connect to ex. http://host:9200.
                   Defaults to "http://localhost:9200".
-
-                  If the http URL is an AWS-hosted elasticsearch installation (e.g.
-                  https://search-domain-xyzzy.us-west-2.es.amazonaws.com) then Zipkin will attempt to
-                  use the default AWS credential provider (env variables, system properties, config
-                  files, or ec2 profiles) to sign outbound requests to the cluster.
-    * `ES_PIPELINE`: Only valid when the destination is Elasticsearch 5.x. Indicates the ingest
+    * `ES_PIPELINE`: Only valid when the destination is Elasticsearch 5+. Indicates the ingest
                      pipeline used before spans are indexed. No default.
     * `ES_TIMEOUT`: Controls the connect, read and write socket timeouts (in milliseconds) for
                     Elasticsearch Api. Defaults to 10000 (10 seconds)
     * `ES_MAX_REQUESTS`: Only valid when the transport is http. Sets maximum in-flight requests from
                          this process to any Elasticsearch host. Defaults to 64.
-    * `ES_AWS_DOMAIN`: The name of the AWS-hosted elasticsearch domain to use. Supercedes any set
-                       `ES_HOSTS`. Triggers the same request signing behavior as with `ES_HOSTS`, but
-                       requires the additional IAM permission to describe the given domain.
-    * `ES_AWS_REGION`: An optional override to the default region lookup to search for the domain
-                       given in `ES_AWS_DOMAIN`. Ignored if only `ES_HOSTS` is present.
     * `ES_INDEX`: The index prefix to use when generating daily index names. Defaults to zipkin.
     * `ES_DATE_SEPARATOR`: The date separator to use when generating daily index names. Defaults to '-'.
     * `ES_INDEX_SHARDS`: The number of shards to split the index into. Each shard and its replicas
@@ -213,8 +185,6 @@ The following apply when `STORAGE_TYPE` is set to `elasticsearch`:
                                        Use when X-Pack security (formerly Shield) is in place.
     * `ES_HTTP_LOGGING`: When set, controls the volume of HTTP logging of the Elasticsearch Api.
                          Options are BASIC, HEADERS, BODY
-    * `ES_LEGACY_READS_ENABLED`: When true, Redundantly queries indexes made with pre v1.31 collectors.
-                                 Defaults to true.
 Example usage:
 
 To connect normally:
@@ -227,15 +197,39 @@ To log Elasticsearch api requests:
 $ STORAGE_TYPE=elasticsearch ES_HTTP_LOGGING=BASIC java -jar zipkin.jar
 ```
 
-Or to use the Amazon Elasticsearch Service.
-```bash
-# make sure your cli credentials are setup as zipkin will read them
-$ aws es describe-elasticsearch-domain --domain-name mydomain|jq .DomainStatus.Endpoint
-"search-mydomain-2rlih66ibw43ftlk4342ceeewu.ap-southeast-1.es.amazonaws.com"
-$ STORAGE_TYPE=elasticsearch ES_HOSTS=https://search-mydomain-2rlih66ibw43ftlk4342ceeewu.ap-southeast-1.es.amazonaws.com java -jar zipkin.jar
+### Legacy (v1) storage components
+The following components are no longer encouraged, but exist to help aid
+transition to supported ones. These are indicated as "v1" as they use
+data layouts based on Zipkin's V1 Thrift model, as opposed to the
+simpler v2 data model currently used.
 
-# Or you can have zipkin implicitly lookup your domain's URL
-$ STORAGE_TYPE=elasticsearch ES_AWS_DOMAIN=mydomain ES_AWS_REGION=ap-southeast-1 java -jar zipkin.jar
+#### MySQL Storage
+The following apply when `STORAGE_TYPE` is set to `mysql`:
+
+    * `MYSQL_DB`: The database to use. Defaults to "zipkin".
+    * `MYSQL_USER` and `MYSQL_PASS`: MySQL authentication, which defaults to empty string.
+    * `MYSQL_HOST`: Defaults to localhost
+    * `MYSQL_TCP_PORT`: Defaults to 3306
+    * `MYSQL_MAX_CONNECTIONS`: Maximum concurrent connections, defaults to 10
+    * `MYSQL_USE_SSL`: Requires `javax.net.ssl.trustStore` and `javax.net.ssl.trustStorePassword`, defaults to false.
+
+Example usage:
+
+```bash
+$ STORAGE_TYPE=mysql MYSQL_USER=root java -jar zipkin.jar
+```
+
+### Cassandra Storage
+Zipkin's [Legacy (v1) Cassandra storage component](../zipkin-storage/cassandra-v1)
+supports version 2.2+ and applies when `STORAGE_TYPE` is set to `cassandra`:
+
+The environment variables are the same as `STORAGE_TYPE=cassandra3`,
+except the default keyspace name is "zipkin".
+
+Example usage:
+
+```bash
+$ STORAGE_TYPE=cassandra java -jar zipkin.jar
 ```
 
 #### Service and Span names query
@@ -253,45 +247,38 @@ Property | Environment Variable | Description
 --- | --- | ---
 `zipkin.collector.http.enabled` | `HTTP_COLLECTOR_ENABLED` | `false` disables the HTTP collector. Defaults to `true`.
 
-### Scribe Collector
+### Scribe (Legacy) Collector
 A collector supporting Scribe is available as an external module. See
 [zipkin-autoconfigure/collector-scribe](../zipkin-autoconfigure/collector-scribe/).
 
 ### Kafka Collector
-This collector remains a Kafka 0.8.x consumer, while Zipkin systems update to 0.9+.
+The Kafka collector is enabled when `KAFKA_BOOTSTRAP_SERVERS` is set to
+a v0.10+ server. The following apply and are further documented [here](../zipkin-autoconfigure/collector-kafka/).
 
-A collector supporting Kafka versions 0.10 and later is available as an external module. See
-[zipkin-autoconfigure/collector-kafka10](../zipkin-autoconfigure/collector-kafka10/).
 
-The following apply when `KAFKA_ZOOKEEPER` is set:
-
-    * `KAFKA_TOPIC`: Topic zipkin spans will be consumed from. Defaults to "zipkin". When Kafka 0.10 is in use, multiple topics may be specified if comma delimited.
-    * `KAFKA_STREAMS`: Count of threads/streams consuming the topic. Defaults to 1
-
-Settings below correspond to "Old Consumer Configs" in [Kafka documentation](http://kafka.apache.org/documentation.html)
-
-Variable | Old Consumer Config | Description
+Variable | New Consumer Config | Description
 --- | --- | ---
-KAFKA_ZOOKEEPER | zookeeper.connect | The zookeeper connect string, ex. 127.0.0.1:2181. No default
-KAFKA_GROUP_ID | group.id | The consumer group this process is consuming on behalf of. Defaults to "zipkin"
-KAFKA_MAX_MESSAGE_SIZE | fetch.message.max.bytes | Maximum size of a message containing spans in bytes. Defaults to 1 MiB
+`KAFKA_BOOTSTRAP_SERVERS` | bootstrap.servers | Comma-separated list of brokers, ex. 127.0.0.1:9092. No default
+`KAFKA_GROUP_ID` | group.id | The consumer group this process is consuming on behalf of. Defaults to `zipkin`
+`KAFKA_TOPIC` | N/A | Comma-separated list of topics that zipkin spans will be consumed from. Defaults to `zipkin`
+`KAFKA_STREAMS` | N/A | Count of threads consuming the topic. Defaults to `1`
 
 Example usage:
 
 ```bash
-$ KAFKA_ZOOKEEPER=127.0.0.1:2181 java -jar zipkin.jar
+$ KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092 java -jar zipkin.jar
 ```
 
 Example targeting Kafka running in Docker:
 
 ```bash
-$ export KAFKA_ZOOKEEPER=$(docker-machine ip `docker-machine active`)
+$ export KAFKA_BOOTSTRAP_SERVERS=$(docker-machine ip `docker-machine active`)
 # Run Kafka in the background
-$ docker run -d -p 2181:2181 -p 9092:9092 \
-    --env ADVERTISED_HOST=$KAFKA_ZOOKEEPER \
+$ docker run -d -p 9092:9092 \
+    --env ADVERTISED_HOST=$KAFKA_BOOTSTRAP_SERVERS \
     --env AUTO_CREATE_TOPICS=true \
     spotify/kafka
-# Start the zipkin server, which reads $KAFKA_ZOOKEEPER
+# Start the zipkin server, which reads $KAFKA_BOOTSTRAP_SERVERS
 $ java -jar zipkin.jar
 ```
 
@@ -305,8 +292,12 @@ For example, to override "overrides.auto.offset.reset", you can set a
 prefixed system property:
 
 ```bash
-$ KAFKA_ZOOKEEPER=127.0.0.1:2181 java -Dzipkin.collector.kafka.overrides.auto.offset.reset=largest -jar zipkin.jar
+$ KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092 java -Dzipkin.collector.kafka.overrides.auto.offset.reset=largest -jar zipkin.jar
 ```
+
+#### Kafka (Legacy) Collector
+The default collector is for Kafka 0.10.x+ brokers. You can use Kafka
+0.8 brokers via an external module. See [zipkin-autoconfigure/collector-kafka08](../zipkin-autoconfigure/collector-kafka08/).
 
 ### RabbitMQ collector
 The [RabbitMQ collector](../zipkin-collector/rabbitmq) will be enabled when the `addresses` or `uri` for the RabbitMQ server(s) is set.

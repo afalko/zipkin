@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -32,7 +32,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import zipkin.autoconfigure.storage.mysql.ZipkinMySQLStorageProperties;
 import zipkin2.Endpoint;
 
 /** Sets up the MySQL tracing in Brave as an initialization. */
@@ -41,14 +40,15 @@ import zipkin2.Endpoint;
 @Configuration
 public class TracingZipkinMySQLStorageAutoConfiguration extends DefaultExecuteListener {
 
-  @Autowired
-  ZipkinMySQLStorageProperties mysql;
+  @Autowired ZipkinMySQLStorageProperties mysql;
 
-  @Bean ExecuteListenerProvider tracingExecuteListenerProvider() {
+  @Bean
+  ExecuteListenerProvider tracingExecuteListenerProvider() {
     return new DefaultExecuteListenerProvider(this);
   }
 
-  @Bean @ConditionalOnMissingBean(Executor.class)
+  @Bean
+  @ConditionalOnMissingBean(Executor.class)
   public Executor executor(CurrentTraceContext currentTraceContext) {
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
     executor.setThreadNamePrefix("MySQLStorage-");
@@ -58,17 +58,20 @@ public class TracingZipkinMySQLStorageAutoConfiguration extends DefaultExecuteLi
 
   /** Attach the IP of the remote datasource, knowing that DNS may invalidate this */
   @Bean
-  @Qualifier("mysql") Endpoint mysql() throws UnknownHostException {
+  @Qualifier("mysql")
+  Endpoint mysql() throws UnknownHostException {
     Endpoint.Builder builder = Endpoint.newBuilder().serviceName("mysql");
     builder.parseIp(InetAddress.getByName(mysql.getHost()));
     return builder.port(mysql.getPort()).build();
   }
 
   /**
-   * There's no attribute namespace shared across request and response. Hence, we need to save off
-   * a reference to the span in scope, so that we can close it in the response.
+   * There's no attribute namespace shared across request and response. Hence, we need to save off a
+   * reference to the span in scope, so that we can close it in the response.
    */
-  @Bean @Qualifier("mysql") ThreadLocalSpan mysqlThreadLocalSpan(Tracing tracing) {
+  @Bean
+  @Qualifier("mysql")
+  ThreadLocalSpan mysqlThreadLocalSpan(Tracing tracing) {
     return ThreadLocalSpan.create(tracing.tracer());
   }
 
@@ -110,4 +113,3 @@ public class TracingZipkinMySQLStorageAutoConfiguration extends DefaultExecuteLi
     span.finish();
   }
 }
-

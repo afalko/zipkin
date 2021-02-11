@@ -18,13 +18,13 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>io.zipkin.java</groupId>
-    <artifactId>zipkin-storage</artifactId>
-    <version>2.8.5-SNAPSHOT</version>
+    <groupId>io.zipkin.zipkin2</groupId>
+    <artifactId>zipkin-storage-parent</artifactId>
+    <version>2.9.3-SNAPSHOT</version>
   </parent>
 
   <artifactId>zipkin-storage-cassandra</artifactId>
-  <name>Storage: Cassandra</name>
+  <name>Storage: Cassandra (Zipkin V2)</name>
 
   <properties>
     <main.basedir>${project.basedir}/../..</main.basedir>
@@ -34,11 +34,13 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>zipkin</artifactId>
+      <version>${project.version}</version>
     </dependency>
 
     <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>zipkin-guava</artifactId>
+      <groupId>com.google.auto.value</groupId>
+      <artifactId>auto-value</artifactId>
+      <scope>provided</scope>
     </dependency>
 
     <dependency>
@@ -48,15 +50,31 @@
     </dependency>
 
     <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-slf4j-impl</artifactId>
-      <version>${log4j.version}</version>
-      <scope>test</scope>
+      <groupId>com.datastax.cassandra</groupId>
+      <artifactId>cassandra-driver-mapping</artifactId>
+      <version>${cassandra-driver-core.version}</version>
     </dependency>
 
+    <!-- for TestObjects -->
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>zipkin</artifactId>
+      <version>${project.version}</version>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- add v1 dependency for integration tests -->
+    <dependency>
+      <groupId>io.zipkin.java</groupId>
+      <artifactId>zipkin</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.zipkin.java</groupId>
+      <artifactId>zipkin</artifactId>
+      <version>${project.version}</version>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
@@ -76,9 +94,9 @@
     </dependency>
 
     <dependency>
-      <groupId>org.assertj</groupId>
-      <artifactId>assertj-guava</artifactId>
-      <version>3.1.0</version>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j-impl</artifactId>
+      <version>${log4j.version}</version>
       <scope>test</scope>
     </dependency>
 

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -486,13 +486,6 @@ public final class V2SpanConverter {
       result.parseIp(input.ipv4());
     }
     return result.build();
-  }
-
-  static boolean endTimestampReflectsSpanDuration(Annotation end, zipkin.Span source) {
-    return end != null
-      && source.timestamp != null
-      && source.duration != null
-      && source.timestamp + source.duration == end.timestamp;
   }
 
   static List<zipkin.Span> toSpans(List<Span> spans) {

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -13,7 +13,6 @@
  */
 package zipkin2.internal;
 
-import com.google.auto.value.AutoValue;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -81,8 +80,10 @@ public final class DependencyLinker {
    * @param spans spans where all spans have the same trace id
    */
   public DependencyLinker putTrace(Iterator<Span> spans) {
+    List<Span> list = new ArrayList<>();
     if (!spans.hasNext()) return this;
     Span first = spans.next();
+    list.add(first);
     if (logger.isLoggable(FINE)) logger.fine("linking trace " + first.traceId());
 
     // Build a tree based on spanId and parentId values
@@ -90,6 +91,7 @@ public final class DependencyLinker {
     builder.addNode(first.parentId(), first.id(), first);
     while (spans.hasNext()) {
       Span next = spans.next();
+      list.add(next);
       builder.addNode(next.parentId(), next.id(), next);
     }
 
@@ -217,7 +219,7 @@ public final class DependencyLinker {
     if (logger.isLoggable(FINE)) {
       logger.fine("incrementing " + (isError ? "error " : "") + "link " + parent + " -> " + child);
     }
-    Pair key = Pair.of(parent, child);
+    Pair key = new Pair(parent, child);
     if (callCounts.containsKey(key)) {
       callCounts.put(key, callCounts.get(key) + 1);
     } else {
@@ -241,7 +243,7 @@ public final class DependencyLinker {
     Map<Pair, Long> errorCounts = new LinkedHashMap<>();
 
     for (DependencyLink link : in) {
-      Pair parentChild = Pair.of(link.parent(), link.child());
+      Pair parentChild = new Pair(link.parent(), link.child());
       long callCount = callCounts.containsKey(parentChild) ? callCounts.get(parentChild) : 0L;
       callCount += link.callCount();
       callCounts.put(parentChild, callCount);
@@ -259,8 +261,8 @@ public final class DependencyLinker {
     for (Map.Entry<Pair, Long> entry : callCounts.entrySet()) {
       Pair parentChild = entry.getKey();
       result.add(DependencyLink.newBuilder()
-        .parent(parentChild.left())
-        .child(parentChild.right())
+        .parent(parentChild.left)
+        .child(parentChild.right)
         .callCount(entry.getValue())
         .errorCount(errorCounts.containsKey(parentChild) ? errorCounts.get(parentChild) : 0L)
         .build());
@@ -268,12 +270,30 @@ public final class DependencyLinker {
     return result;
   }
 
-  @AutoValue
-  static abstract class Pair {
-    static Pair of(String left, String right) {
-      return new AutoValue_DependencyLinker_Pair(left, right);
+  static final class Pair {
+    final String left, right;
+
+    Pair(String left, String right) {
+      this.left = left;
+      this.right = right;
     }
-    abstract String left();
-    abstract String right();
+
+    @Override
+    public boolean equals(Object o) {
+      if (o == this) return true;
+      if (!(o instanceof Pair)) return false;
+      Pair that = (DependencyLinker.Pair) o;
+      return left.equals(that.left) && right.equals(that.right);
+    }
+
+    @Override
+    public int hashCode() {
+      int h$ = 1;
+      h$ *= 1000003;
+      h$ ^= left.hashCode();
+      h$ *= 1000003;
+      h$ ^= right.hashCode();
+      return h$;
+    }
   }
 }

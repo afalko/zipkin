@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -26,8 +26,7 @@ import static org.springframework.boot.test.util.EnvironmentTestUtils.addEnviron
 
 public class ZipkinCassandraStorageAutoConfigurationTest {
 
-  @Rule
-  public ExpectedException thrown = ExpectedException.none();
+  @Rule public ExpectedException thrown = ExpectedException.none();
 
   AnnotationConfigApplicationContext context;
 
@@ -62,15 +61,15 @@ public class ZipkinCassandraStorageAutoConfigurationTest {
   @Test
   public void canOverridesProperty_contactPoints() {
     context = new AnnotationConfigApplicationContext();
-    addEnvironment(context,
+    addEnvironment(
+        context,
         "zipkin.storage.type:cassandra3",
         "zipkin.storage.cassandra3.contact-points:host1,host2" // note snake-case supported
-    );
+        );
     Access.registerCassandra3(context);
     context.refresh();
 
-    assertThat(context.getBean(CassandraStorage.class).contactPoints())
-        .isEqualTo("host1,host2");
+    assertThat(context.getBean(CassandraStorage.class).contactPoints()).isEqualTo("host1,host2");
   }
 
   @Test

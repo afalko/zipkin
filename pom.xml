@@ -19,7 +19,7 @@
 
   <groupId>io.zipkin.java</groupId>
   <artifactId>parent</artifactId>
-  <version>2.8.5-SNAPSHOT</version>
+  <version>2.9.3-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <modules>
@@ -27,7 +27,6 @@
     <module>zipkin</module>
     <module>zipkin-ui</module>
     <module>zipkin-junit</module>
-    <module>zipkin-guava</module>
     <module>benchmarks</module>
     <module>zipkin-storage</module>
     <module>zipkin-collector</module>
@@ -46,12 +45,13 @@
 
     <main.basedir>${project.basedir}</main.basedir>
 
-    <brave.version>4.18.2</brave.version>
+    <brave.version>5.0.0</brave.version>
     <cassandra-driver-core.version>3.5.0</cassandra-driver-core.version>
     <okhttp.version>3.10.0</okhttp.version>
     <okio.version>1.14.1</okio.version>
     <!-- important to keep this in sync with spring-boot-dependencies -->
     <jooq.version>3.10.7</jooq.version>
+    <micrometer.version>1.0.4</micrometer.version>
     <spring-boot.version>2.0.2.RELEASE</spring-boot.version>
     <!-- MySQL connector is GPL, even if it has an OSS exception.
          https://www.mysql.com/about/legal/licensing/foss-exception/
@@ -158,6 +158,12 @@
 
       <dependency>
         <groupId>io.zipkin.zipkin2</groupId>
+        <artifactId>zipkin-collector</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>io.zipkin.zipkin2</groupId>
         <artifactId>zipkin-storage-elasticsearch</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -176,14 +182,14 @@
       </dependency>
 
       <dependency>
-        <groupId>${project.groupId}</groupId>
+        <groupId>io.zipkin.zipkin2</groupId>
         <artifactId>zipkin-junit</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>zipkin-storage-cassandra</artifactId>
+        <groupId>io.zipkin.zipkin2</groupId>
+        <artifactId>zipkin-storage-cassandra-v1</artifactId>
         <version>${project.version}</version>
       </dependency>
 
@@ -206,8 +212,8 @@
       </dependency>
 
       <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>zipkin-storage-mysql</artifactId>
+        <groupId>io.zipkin.zipkin2</groupId>
+        <artifactId>zipkin-storage-mysql-v1</artifactId>
         <version>${project.version}</version>
       </dependency>
 
@@ -219,31 +225,13 @@
 
       <dependency>
         <groupId>${project.groupId}</groupId>
-        <artifactId>zipkin-storage-elasticsearch-http</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>zipkin-autoconfigure-storage-elasticsearch-http</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>zipkin-autoconfigure-storage-elasticsearch-aws</artifactId>
+        <artifactId>zipkin-autoconfigure-storage-elasticsearch</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>zipkin-autoconfigure-metrics-prometheus</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>zipkin-guava</artifactId>
         <version>${project.version}</version>
       </dependency>
 
@@ -260,7 +248,19 @@
       </dependency>
 
       <dependency>
-        <groupId>${project.groupId}</groupId>
+        <groupId>io.zipkin.zipkin2</groupId>
+        <artifactId>zipkin-collector-kafka08</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>io.zipkin.zipkin2</groupId>
+        <artifactId>zipkin-autoconfigure-collector-kafka08</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>io.zipkin.zipkin2</groupId>
         <artifactId>zipkin-collector-kafka</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -272,19 +272,7 @@
       </dependency>
 
       <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>zipkin-collector-kafka10</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>${project.groupId}</groupId>
-        <artifactId>zipkin-autoconfigure-collector-kafka10</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>${project.groupId}</groupId>
+        <groupId>io.zipkin.zipkin2</groupId>
         <artifactId>zipkin-collector-rabbitmq</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -296,7 +284,7 @@
       </dependency>
 
       <dependency>
-        <groupId>${project.groupId}</groupId>
+        <groupId>io.zipkin.zipkin2</groupId>
         <artifactId>zipkin-collector-scribe</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -469,11 +457,12 @@
             <groupId>io.zipkin.zipkin2</groupId>
             <artifactId>zipkin</artifactId>
           </exclusion>
-          <exclusion>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>zipkin</artifactId>
-          </exclusion>
         </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>io.zipkin.brave.cassandra</groupId>
+        <artifactId>brave-instrumentation-cassandra-driver</artifactId>
+        <version>0.7.0</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -526,6 +515,12 @@
         <plugin>
           <artifactId>maven-jar-plugin</artifactId>
           <version>${maven-jar-plugin.version}</version>
+          <configuration>
+            <archive>
+              <!-- prevents huge pom file from also being added to the jar under META-INF/maven -->
+              <addMavenDescriptor>false</addMavenDescriptor>
+            </archive>
+          </configuration>
         </plugin>
 
         <plugin>
@@ -717,6 +712,10 @@
         <configuration>
           <!-- session.executionRootDirectory resolves properly even with nested modules -->
           <header>${main.basedir}/src/etc/header.txt</header>
+          <mapping>
+            <!-- Don't use javadoc style as this makes code formatters break it by adding tags! -->
+            <java>SLASHSTAR_STYLE</java>
+          </mapping>
           <excludes>
             <exclude>.travis.yml</exclude>
             <exclude>.editorconfig</exclude>

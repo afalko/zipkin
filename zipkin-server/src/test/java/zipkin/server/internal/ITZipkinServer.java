@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -144,7 +144,7 @@ public class ITZipkinServer {
 
     assertThat(response.code()).isEqualTo(400);
     assertThat(response.body().string())
-      .startsWith("Malformed reading List<Span> from TBinary");
+      .endsWith("reading List<Span> from TBinary");
   }
 
   @Test public void writeSpans_contentTypeXProtobuf() throws Exception {

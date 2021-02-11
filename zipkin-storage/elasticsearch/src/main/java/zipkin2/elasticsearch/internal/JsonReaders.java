@@ -1,5 +1,5 @@
-/**
- * Copyright 2015-2017 The OpenZipkin Authors
+/*
+ * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -28,6 +28,7 @@ public final class JsonReaders {
    * This saves you from having to define nested types to read a single value
    *
    * <p>Instead of defining two types like this, and double-checking null..
+   *
    * <pre>{@code
    * class Response {
    *   Message message;
@@ -41,6 +42,7 @@ public final class JsonReaders {
    * }</pre>
    *
    * <p>You can advance to the field directly.
+   *
    * <pre>{@code
    * JsonReader status = enterPath(JsonReader.of(body.source()), "message", "status");
    * if (status != null) throw new IllegalStateException(status.nextString());
@@ -105,6 +107,5 @@ public final class JsonReaders {
     }
   }
 
-  JsonReaders() {
-  }
+  JsonReaders() {}
 }

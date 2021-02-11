@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -14,13 +14,14 @@
 package zipkin.autoconfigure.storage.cassandra;
 
 import brave.Tracing;
+import brave.cassandra.driver.TracingSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
-import zipkin.storage.cassandra.SessionFactory;
+import zipkin2.storage.cassandra.v1.SessionFactory;
 
 /** Sets up the Cassandra tracing in Brave as an initialization. */
 @ConditionalOnBean(Tracing.class)
@@ -34,7 +35,8 @@ class TracingZipkinCassandraStorageAutoConfiguration {
 
   // NOTE: this doesn't yet trace span consumption commands because the trace context
   // is lost when indirected with SpanConsumer.accept().enqueue(). We'll fix this later
-  @Bean SessionFactory tracingSessionFactory() {
-    return storage -> new TracingSession(tracing, delegate.create(storage));
+  @Bean
+  SessionFactory tracingSessionFactory() {
+    return storage -> TracingSession.create(tracing, delegate.create(storage));
   }
 }

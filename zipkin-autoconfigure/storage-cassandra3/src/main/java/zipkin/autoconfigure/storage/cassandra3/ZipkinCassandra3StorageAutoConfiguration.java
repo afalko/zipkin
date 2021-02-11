@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -21,14 +21,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import zipkin.internal.V2StorageComponent;
 import zipkin2.storage.StorageComponent;
 import zipkin2.storage.cassandra.CassandraStorage;
 
 /**
- * This storage accepts Cassandra logs in a specified category. Each log entry is expected to contain
- * a single span, which is TBinaryProtocol big-endian, then base64 encoded. Decoded spans are stored
- * asynchronously.
+ * This storage accepts Cassandra logs in a specified category. Each log entry is expected to
+ * contain a single span, which is TBinaryProtocol big-endian, then base64 encoded. Decoded spans
+ * are stored asynchronously.
  */
 @Configuration
 @EnableConfigurationProperties(ZipkinCassandra3StorageProperties.class)
@@ -44,19 +43,14 @@ class ZipkinCassandra3StorageAutoConfiguration {
 
   @Bean
   @ConditionalOnMissingBean
-  V2StorageComponent storage(ZipkinCassandra3StorageProperties properties,
-    @Value("${zipkin.storage.strict-trace-id:true}") boolean strictTraceId,
-    @Value("${zipkin.storage.search-enabled:true}") boolean searchEnabled) {
-    CassandraStorage.Builder builder = properties.toBuilder()
-      .strictTraceId(strictTraceId)
-      .searchEnabled(searchEnabled);
-    CassandraStorage result = tracingSessionFactory == null
-      ? builder.build()
-      : builder.sessionFactory(tracingSessionFactory).build();
-    return V2StorageComponent.create(result);
-  }
-
-  @Bean CassandraStorage v2Storage(V2StorageComponent component) {
-    return (CassandraStorage) component.delegate();
+  StorageComponent storage(
+      ZipkinCassandra3StorageProperties properties,
+      @Value("${zipkin.storage.strict-trace-id:true}") boolean strictTraceId,
+      @Value("${zipkin.storage.search-enabled:true}") boolean searchEnabled) {
+    CassandraStorage.Builder builder =
+        properties.toBuilder().strictTraceId(strictTraceId).searchEnabled(searchEnabled);
+    return tracingSessionFactory == null
+        ? builder.build()
+        : builder.sessionFactory(tracingSessionFactory).build();
   }
 }

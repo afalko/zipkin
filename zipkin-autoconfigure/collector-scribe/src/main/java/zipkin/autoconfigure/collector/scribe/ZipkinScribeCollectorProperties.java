@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -14,7 +14,7 @@
 package zipkin.autoconfigure.collector.scribe;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import zipkin.collector.scribe.ScribeCollector;
+import zipkin2.collector.scribe.ScribeCollector;
 
 @ConfigurationProperties("zipkin.collector.scribe")
 class ZipkinScribeCollectorProperties {
@@ -38,8 +38,6 @@ class ZipkinScribeCollectorProperties {
   }
 
   public ScribeCollector.Builder toBuilder() {
-    return ScribeCollector.builder()
-        .category(category)
-        .port(port);
+    return ScribeCollector.newBuilder().category(category).port(port);
   }
 }

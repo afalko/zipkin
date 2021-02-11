@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -28,6 +28,8 @@ import java.util.TreeMap;
 import zipkin2.codec.SpanBytesDecoder;
 import zipkin2.codec.SpanBytesEncoder;
 import zipkin2.internal.Nullable;
+
+import static zipkin2.Endpoint.HEX_DIGITS;
 
 /**
  * A span is a single-host view of an operation. A trace is a series of spans (often RPC calls)
@@ -361,6 +363,37 @@ public final class Span implements Serializable { // for Spark and Flink jobs
     }
 
     /**
+     * Encodes 64 or 128 bits from the input into a hex trace ID.
+     *
+     * @param high Upper 64bits of the trace ID. Zero means the trace ID is 64-bit.
+     * @param low Lower 64bits of the trace ID.
+     * @throws IllegalArgumentException if both values are zero
+     */
+    public Builder traceId(long high, long low) {
+      if (high == 0L && low == 0L) throw new IllegalArgumentException("empty trace ID");
+      char[] result = new char[high != 0L ? 32 : 16];
+      int pos = 0;
+      if (high != 0L) {
+        writeHexLong(result, pos, high);
+        pos += 16;
+      }
+      writeHexLong(result, pos, low);
+      this.traceId =  new String(result);
+      return this;
+    }
+
+    /**
+     * Encodes 64 bits from the input into a hex parent ID. Unsets the {@link Span#parentId()} if
+     * the input is 0.
+     *
+     * @see Span#parentId()
+     */
+    public Builder parentId(long parentId) {
+      this.parentId = parentId != 0L ? toLowerHex(parentId) : null;
+      return this;
+    }
+
+    /**
      * @throws IllegalArgumentException if not lower-hex format
      * @see Span#parentId()
      */
@@ -373,6 +406,18 @@ public final class Span implements Serializable { // for Spark and Flink jobs
       if (length > 16) throw new IllegalArgumentException("parentId.length > 16");
       validateHex(parentId);
       this.parentId = length < 16 ? padLeft(parentId, 16) : parentId;
+      return this;
+    }
+
+    /**
+     * Encodes 64 bits from the input into a hex span ID.
+     *
+     * @throws IllegalArgumentException if the input is zero
+     * @see Span#id()
+     */
+    public Builder id(long id) {
+      if (id == 0L) throw new IllegalArgumentException("empty span ID");
+      this.id = toLowerHex(id);
       return this;
     }
 
@@ -535,6 +580,29 @@ public final class Span implements Serializable { // for Spark and Flink jobs
     for (int i = 0; i < offset; i++) builder.append('0');
     builder.append(id);
     return builder.toString();
+  }
+
+  static String toLowerHex(long v) {
+    char[] data = new char[16];
+    writeHexLong(data, 0, v);
+    return new String(data);
+  }
+
+  /** Inspired by {@code okio.Buffer.writeLong} */
+  static void writeHexLong(char[] data, int pos, long v) {
+    writeHexByte(data, pos + 0, (byte) ((v >>> 56L) & 0xff));
+    writeHexByte(data, pos + 2, (byte) ((v >>> 48L) & 0xff));
+    writeHexByte(data, pos + 4, (byte) ((v >>> 40L) & 0xff));
+    writeHexByte(data, pos + 6, (byte) ((v >>> 32L) & 0xff));
+    writeHexByte(data, pos + 8, (byte) ((v >>> 24L) & 0xff));
+    writeHexByte(data, pos + 10, (byte) ((v >>> 16L) & 0xff));
+    writeHexByte(data, pos + 12, (byte) ((v >>> 8L) & 0xff));
+    writeHexByte(data, pos + 14, (byte) (v & 0xff));
+  }
+
+  static void writeHexByte(char[] data, int pos, byte b) {
+    data[pos + 0] = HEX_DIGITS[(b >> 4) & 0xf];
+    data[pos + 1] = HEX_DIGITS[b & 0xf];
   }
 
   static void validateHex(String id) {

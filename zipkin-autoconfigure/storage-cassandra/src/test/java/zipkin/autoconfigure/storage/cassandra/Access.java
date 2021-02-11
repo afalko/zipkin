@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -21,8 +21,6 @@ public final class Access {
 
   public static void registerCassandra(AnnotationConfigApplicationContext context) {
     context.register(
-      PropertyPlaceholderAutoConfiguration.class,
-      ZipkinCassandraStorageAutoConfiguration.class
-    );
+        PropertyPlaceholderAutoConfiguration.class, ZipkinCassandraStorageAutoConfiguration.class);
   }
 }

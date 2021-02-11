@@ -1,5 +1,5 @@
-/**
- * Copyright 2015-2017 The OpenZipkin Authors
+/*
+ * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -222,7 +222,7 @@ public abstract class SpanStoreTest {
     List<String> spanNames = new ArrayList<>();
     for (int i = 0; i < 50; i++) {
       String suffix = i < 10 ? "0" + i : String.valueOf(i);
-      accept(span1.toBuilder().id(i).name("yak" + suffix).build());
+      accept(span1.toBuilder().id(i + 1).name("yak" + suffix).build());
       spanNames.add("yak" + suffix);
     }
 
@@ -249,7 +249,7 @@ public abstract class SpanStoreTest {
       String suffix = i < 10 ? "0" + i : String.valueOf(i);
       BinaryAnnotation yak =
           BinaryAnnotation.address("sa", Endpoint.create("yak" + suffix, 127 << 24 | 1));
-      accept(span1.toBuilder().id(i).addBinaryAnnotation(yak).build());
+      accept(span1.toBuilder().id(i + 1).addBinaryAnnotation(yak).build());
       serviceNames.add("yak" + suffix);
     }
 
@@ -537,7 +537,7 @@ public abstract class SpanStoreTest {
   }
 
   /**
-   * Spans and traces are meaningless unless they have a timestamp. While unlikley, this could
+   * Spans and traces are meaningless unless they have a timestamp. While unlikely, this could
    * happen if a binary annotation is logged before a timestamped one is.
    */
   @Test
@@ -614,7 +614,7 @@ public abstract class SpanStoreTest {
    */
   @Test
   public void getTraces_differentiateOnServiceName() {
-    Span trace1 = Span.builder().traceId(1).name("get").id(1)
+    Span trace1 = Span.builder().traceId(1).name("1").id(1)
         .timestamp((TODAY + 1) * 1000)
         .duration(3000L)
         .addAnnotation(Annotation.create((TODAY + 1) * 1000, CLIENT_SEND, WEB_ENDPOINT))
@@ -626,7 +626,7 @@ public abstract class SpanStoreTest {
         .addBinaryAnnotation(BinaryAnnotation.create("web-b", "web", WEB_ENDPOINT))
         .build();
 
-    Span trace2 = Span.builder().traceId(2).name("get").id(2)
+    Span trace2 = Span.builder().traceId(2).name("2").id(2)
         .timestamp((TODAY + 11) * 1000)
         .duration(3000L)
         .addAnnotation(Annotation.create((TODAY + 11) * 1000, CLIENT_SEND, APP_ENDPOINT))

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -24,6 +24,15 @@ public class Proto3SpanWriterTest {
   Buffer buf = new Buffer(2048); // bigger than needed to test sizeOf
 
   Proto3SpanWriter writer = new Proto3SpanWriter();
+
+  /** proto messages always need a key, so the non-list form is just a single-field */
+  @Test public void write_startsWithSpanKeyAndLengthPrefix() {
+    byte[] buff = writer.write(CLIENT_SPAN);
+
+    assertThat(buff)
+      .hasSize(writer.sizeInBytes(CLIENT_SPAN))
+      .startsWith((byte) 10, SPAN.sizeOfValue(CLIENT_SPAN));
+  }
 
   @Test public void writeList_startsWithSpanKeyAndLengthPrefix() {
     byte[] buff = writer.writeList(asList(CLIENT_SPAN));

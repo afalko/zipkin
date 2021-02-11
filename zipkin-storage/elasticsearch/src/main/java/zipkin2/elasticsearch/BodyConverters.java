@@ -1,5 +1,5 @@
-/**
- * Copyright 2015-2017 The OpenZipkin Authors
+/*
+ * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -26,24 +26,28 @@ import zipkin2.internal.DependencyLinker;
 import static zipkin2.elasticsearch.internal.JsonReaders.collectValuesNamed;
 
 public final class BodyConverters {
-  static final HttpCall.BodyConverter<Object> NULL = new HttpCall.BodyConverter<Object>() {
-    @Override public Object convert(BufferedSource content) throws IOException {
-      return null;
-    }
-  };
+  static final HttpCall.BodyConverter<Object> NULL =
+      new HttpCall.BodyConverter<Object>() {
+        @Override
+        public Object convert(BufferedSource content) throws IOException {
+          return null;
+        }
+      };
   static final HttpCall.BodyConverter<List<String>> KEYS =
-    new HttpCall.BodyConverter<List<String>>() {
-      @Override public List<String> convert(BufferedSource b) throws IOException {
-        return collectValuesNamed(JsonReader.of(b), "key");
-      }
-    };
+      new HttpCall.BodyConverter<List<String>>() {
+        @Override
+        public List<String> convert(BufferedSource b) throws IOException {
+          return collectValuesNamed(JsonReader.of(b), "key");
+        }
+      };
   static final HttpCall.BodyConverter<List<Span>> SPANS =
-    SearchResultConverter.create(JsonAdapters.SPAN_ADAPTER);
+      SearchResultConverter.create(JsonAdapters.SPAN_ADAPTER);
   static final HttpCall.BodyConverter<List<DependencyLink>> DEPENDENCY_LINKS =
-    new SearchResultConverter<DependencyLink>(JsonAdapters.DEPENDENCY_LINK_ADAPTER) {
-      @Override public List<DependencyLink> convert(BufferedSource content) throws IOException {
-        List<DependencyLink> result = super.convert(content);
-        return result.isEmpty() ? result : DependencyLinker.merge(result);
-      }
-    };
+      new SearchResultConverter<DependencyLink>(JsonAdapters.DEPENDENCY_LINK_ADAPTER) {
+        @Override
+        public List<DependencyLink> convert(BufferedSource content) throws IOException {
+          List<DependencyLink> result = super.convert(content);
+          return result.isEmpty() ? result : DependencyLinker.merge(result);
+        }
+      };
 }

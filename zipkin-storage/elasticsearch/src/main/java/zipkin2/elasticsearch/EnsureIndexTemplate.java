@@ -1,5 +1,5 @@
-/**
- * Copyright 2015-2017 The OpenZipkin Authors
+/*
+ * Copyright 2015-2018 The OpenZipkin Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -27,16 +27,18 @@ final class EnsureIndexTemplate {
    * template is available.
    */
   static void apply(HttpCall.Factory callFactory, String name, String indexTemplate)
-    throws IOException {
+      throws IOException {
     HttpUrl templateUrl = callFactory.baseUrl.newBuilder("_template").addPathSegment(name).build();
     Request getTemplate = new Request.Builder().url(templateUrl).tag("get-template").build();
     try {
       callFactory.newCall(getTemplate, BodyConverters.NULL).execute();
     } catch (IllegalStateException e) { // TODO: handle 404 slightly more nicely
-      Request updateTemplate = new Request.Builder()
-        .url(templateUrl)
-        .put(RequestBody.create(ElasticsearchStorage.APPLICATION_JSON, indexTemplate))
-        .tag("update-template").build();
+      Request updateTemplate =
+          new Request.Builder()
+              .url(templateUrl)
+              .put(RequestBody.create(ElasticsearchStorage.APPLICATION_JSON, indexTemplate))
+              .tag("update-template")
+              .build();
       callFactory.newCall(updateTemplate, BodyConverters.NULL).execute();
     }
   }

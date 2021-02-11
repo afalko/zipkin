@@ -13,16 +13,15 @@ zipkin:
       # Set to false to disable creation of spans via HTTP collector API
       enabled: ${HTTP_COLLECTOR_ENABLED:true}
     kafka:
-      # ZooKeeper host string, comma-separated host:port value.
-      zookeeper: ${KAFKA_ZOOKEEPER:}
+      # Kafka bootstrap broker list, comma-separated host:port values. Setting this activates the
+      # Kafka 0.10+ collector.
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:}
       # Name of topic to poll for spans
       topic: ${KAFKA_TOPIC:zipkin}
       # Consumer group this process is consuming on behalf of.
       group-id: ${KAFKA_GROUP_ID:zipkin}
       # Count of consumer threads consuming the topic
       streams: ${KAFKA_STREAMS:1}
-      # Maximum size of a message containing spans in bytes
-      max-message-size: ${KAFKA_MAX_MESSAGE_SIZE:1048576}
     rabbitmq:
       # RabbitMQ server address list (comma-separated list of host:port)
       addresses: ${RABBIT_ADDRESSES:}
@@ -102,9 +101,6 @@ zipkin:
       pipeline: ${ES_PIPELINE:}
       max-requests: ${ES_MAX_REQUESTS:64}
       timeout: ${ES_TIMEOUT:10000}
-      aws:
-        domain: ${ES_AWS_DOMAIN:}
-        region: ${ES_AWS_REGION:}
       index: ${ES_INDEX:zipkin}
       date-separator: ${ES_DATE_SEPARATOR:-}
       index-shards: ${ES_INDEX_SHARDS:5}
